@@ -5,6 +5,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage*
+.coverage
+coverage.xml
+nosetests.xml
+
 # C extensions
 *.so
 
@@ -54,3 +62,5 @@ docs/_build/
 .venv/
 venv/
 ENV/
+
+.vscode
