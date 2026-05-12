@@ -1,119 +1,187 @@
-# coding=utf-8
+"""Tests for the RFC 5424 PROCID field emitted by ``Rfc5424SysLogHandler``."""
+
 import logging
 import socket
+from typing import Any
+from unittest.mock import patch
 
-from conftest import (
-    address, message, connect_mock, SomeClass
-)
-from mock import patch
 import pytest
-from rfc5424logging import Rfc5424SysLogHandler, NILVALUE, FRAMING_OCTET_COUNTING
+
+from syslog_sd_logging import NILVALUE, Rfc5424SysLogHandler
+from tests.test_data import SomeClass, address, message
 
 
-@pytest.mark.parametrize("handler_kwargs,expected", [
-    (
-        {'address': address},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 111'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ), (
-        {'address': address, 'procid': ''},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 111'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ), (
-        {'address': address, 'procid': None},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 111'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ), (
-        {'address': address, 'procid': NILVALUE},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root -'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ), (
-        {'address': address, 'procid': '1234'},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 1234'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ), (
-        {'address': address, 'procid': '1234123412341234123412341234123412341234123412341234123412341234123412341234'
-                                       '1234123412341234123412341234123412341234123412341234aaa'},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 123412341234123412341234123412341234123412341234'
-        b'12341234123412341234123412341234123412341234123412341234123412341234123412341234'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ), (
-        {'address': address, 'procid': 1234},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 1234'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ), (
-        {'address': address, 'procid': '12 \nΔ34'},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 1234'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ), (
-        {'address': address, 'procid': SomeClass()},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root MyClassObject'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ),
-])
-def test_procid(logger, handler_kwargs, expected):
+@pytest.mark.parametrize(
+    ('handler_kwargs', 'expected'),
+    [
+        pytest.param(
+            {'address': address},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 111'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='default',
+        ),
+        pytest.param(
+            {'address': address, 'procid': ''},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 111'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='empty',
+        ),
+        pytest.param(
+            {'address': address, 'procid': None},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 111'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='none',
+        ),
+        pytest.param(
+            {'address': address, 'procid': NILVALUE},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root -'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='nilvalue',
+        ),
+        pytest.param(
+            {'address': address, 'procid': '1234'},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 1234'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='int_in_str',
+        ),
+        pytest.param(
+            {
+                'address': address,
+                'procid': (
+                    '1234123412341234123412341234123412341234123412341234123412341234123412341234'
+                    '1234123412341234123412341234123412341234123412341234aaa'
+                ),
+            },
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 1234123412341234123412'
+                b'34123412341234123412341234123412341234123412341234123412341234123412341234123412'
+                b'34123412341234123412341234'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='long_str_truncated',
+        ),
+        pytest.param(
+            {'address': address, 'procid': 1234},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 1234'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='int_coerced',
+        ),
+        pytest.param(
+            {'address': address, 'procid': '12 \nΔ34'},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 1234'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='sanitized_non_printable',
+        ),
+        pytest.param(
+            {'address': address, 'procid': SomeClass()},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root MyClassObject'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='object_str',
+        ),
+    ],
+)
+def test_procid(
+    logger: logging.Logger,
+    handler_kwargs: dict[str, Any],
+    expected: bytes,
+) -> None:
+    """Check PROCID when ``procid`` is set on the handler."""
     sh = Rfc5424SysLogHandler(**handler_kwargs)
     logger.addHandler(sh)
-    with patch.object(sh.transport, 'socket') as syslog_socket:
+    with patch.object(sh.transport, 'transmit') as transmit_mock:
         logger.info(message)
-        syslog_socket.sendto.assert_called_once_with(expected, address)
-        syslog_socket.sendto.reset_mock()
+        transmit_mock.assert_called_once_with(expected)
+        transmit_mock.reset_mock()
 
         logger.log(logging.INFO, message)
-        syslog_socket.sendto.assert_called_once_with(expected, address)
-        syslog_socket.sendto.reset_mock()
+        transmit_mock.assert_called_once_with(expected)
+        transmit_mock.reset_mock()
 
-        logging.info(message)
-        syslog_socket.sendto.assert_called_once_with(expected, address)
-        syslog_socket.sendto.reset_mock()
+        logging.info(message)  # noqa: LOG015
+        transmit_mock.assert_called_once_with(expected)
+        transmit_mock.reset_mock()
     logger.removeHandler(sh)
 
 
-@pytest.mark.parametrize("handler_kwargs,expected", [
-    (
-        {'address': address, 'socktype': socket.SOCK_STREAM},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 111'
-        b' - - \xef\xbb\xbfThis is an interesting message\n'
-    ),
-    (
-        {'address': address, 'procid': "1234", 'socktype': socket.SOCK_STREAM},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 1234'
-        b' - - \xef\xbb\xbfThis is an interesting message\n'
-    ),
-    (
-        {'address': address, 'procid': 1234, 'socktype': socket.SOCK_STREAM},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 1234'
-        b' - - \xef\xbb\xbfThis is an interesting message\n'
-    ),
-    (
-        {'address': address, 'procid': '12 \nΔ34', 'socktype': socket.SOCK_STREAM},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root 1234'
-        b' - - \xef\xbb\xbfThis is an interesting message\n'
-    ),
-    (
-        {'address': address, 'procid': SomeClass(), 'socktype': socket.SOCK_STREAM},
-        b'<14>1 2000-01-01T17:11:11.111111+06:00 testhostname root MyClassObject'
-        b' - - \xef\xbb\xbfThis is an interesting message\n'
-    ),
-    (
-        {'address': address, 'procid': SomeClass(), 'socktype': socket.SOCK_STREAM, "framing": FRAMING_OCTET_COUNTING},
-        b'108 <14>1 2000-01-01T17:11:11.111111+06:00 testhostname root MyClassObject'
-        b' - - \xef\xbb\xbfThis is an interesting message'
-    ),
-])
-def test_procid_tcp(logger, handler_kwargs, expected):
+@pytest.mark.parametrize(
+    ('handler_kwargs', 'expected'),
+    [
+        pytest.param(
+            {'address': address, 'socket_type': socket.SOCK_STREAM},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 111'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='default',
+        ),
+        pytest.param(
+            {'address': address, 'procid': '1234', 'socket_type': socket.SOCK_STREAM},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 1234'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='int_in_str',
+        ),
+        pytest.param(
+            {'address': address, 'procid': 1234, 'socket_type': socket.SOCK_STREAM},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 1234'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='int_coerced',
+        ),
+        pytest.param(
+            {'address': address, 'procid': '12 \nΔ34', 'socket_type': socket.SOCK_STREAM},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root 1234'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='sanitized_non_printable',
+        ),
+        pytest.param(
+            {'address': address, 'procid': SomeClass(), 'socket_type': socket.SOCK_STREAM},
+            (
+                b'<14>1 2000-01-01T18:11:11.111111+07:00 test-hostname root MyClassObject'
+                b' - - \xef\xbb\xbfThis is an interesting message'
+            ),
+            id='object_str',
+        ),
+    ],
+)
+def test_procid_tcp(
+    logger: logging.Logger,
+    handler_kwargs: dict[str, Any],
+    expected: bytes,
+) -> None:
+    """Check PROCID when ``procid`` is set on the handler over TCP."""
     sh = Rfc5424SysLogHandler(**handler_kwargs)
     logger.addHandler(sh)
-    with patch.object(sh.transport, 'socket', side_effect=connect_mock) as syslog_socket:
+    with patch.object(sh.transport, 'transmit') as transmit_mock:
         logger.info(message)
-        syslog_socket.sendall.assert_called_once_with(expected)
-        syslog_socket.sendall.reset_mock()
+        transmit_mock.assert_called_once_with(expected)
+        transmit_mock.reset_mock()
 
         logger.log(logging.INFO, message)
-        syslog_socket.sendall.assert_called_once_with(expected)
-        syslog_socket.sendall.reset_mock()
+        transmit_mock.assert_called_once_with(expected)
+        transmit_mock.reset_mock()
 
-        logging.info(message)
-        syslog_socket.sendall.assert_called_once_with(expected)
-        syslog_socket.sendall.reset_mock()
+        logging.info(message)  # noqa: LOG015
+        transmit_mock.assert_called_once_with(expected)
+        transmit_mock.reset_mock()
     logger.removeHandler(sh)
