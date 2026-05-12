@@ -28,7 +28,7 @@ from syslog_sd_logging.handler import (
 )
 from syslog_sd_logging.transport import FRAMING_NON_TRANSPARENT, FRAMING_OCTET_COUNTING
 
-__version__ = '0.1.0'
+__version__ = '0.1.1a0'
 
 __all__ = [
     'ALERT',
