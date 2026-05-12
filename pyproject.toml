@@ -1,0 +1,181 @@
+[project]
+name = "syslog-sd-logging"
+version = "0.1.0"
+description = "An up-to-date, RFC5424-Compliant syslog handler for the Python logging framework"
+readme = "README.md"
+requires-python = ">=3.10,<4.0.0"
+authors = [
+    { name = "Joris Beckers", email = "joris.beckers@gmail.com" },
+    { name = "Voronov Vladimir", email = "voronov.volodya2013@yandex.ru" },
+]
+maintainers = [
+    { name = "Voronov Vladimir", email = "voronov.volodya2013@yandex.ru" },
+]
+license = { text = "BSD" }
+keywords = [
+    "syslog",
+    "logging",
+    "rfc5424",
+    "handler",
+    "structured data",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: BSD License",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development",
+    "Topic :: System :: Logging",
+]
+
+dependencies = [
+    "pytz>=2026.1.post1",
+    "tzlocal>=5.3.1",
+]
+
+[dependency-groups]
+dev = [
+    "commitizen>=4.13.10",
+    "mypy>=1.20.2",
+    "pre-commit>=4.6.0",
+    "types-pytz>=2026.1.1.20260408",
+]
+docs = [
+    "mkdocs>=1.6.1",
+]
+lint = [
+    "ruff>=0.15.12",
+]
+test = [
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+]
+
+
+[tool.hatch.build.targets.sdist]
+include = ["syslog_sd_logging"]
+
+[tool.hatch.build.targets.wheel]
+include = ["syslog_sd_logging"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "$version"
+version_scheme = "pep440"
+version_provider = "pep621"
+update_changelog_on_bump = true
+major_version_zero = true
+version_files = [
+    "syslog_sd_logging/__init__.py",
+]
+
+[tool.coverage.run]
+source = ["syslog_sd_logging"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=syslog_sd_logging --cov-report=term-missing --cov-report=xml"
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+# https://docs.astral.sh/ruff/rules/
+select = ["ALL"]
+ignore = [
+    "D104",
+    "D107",
+]
+line-length = 100
+
+[tool.ruff.lint.pyupgrade]
+# Preserve types, even if a file imports `from __future__ import annotations`.
+keep-runtime-typing = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+"docs_src/*" = ["D100", "D101", "D103", "T201", "S104", "INP001", "ERA001", "G004"]
+
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "single"
+
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-positional-args = 3
+
+[tool.pylint]
+disable = "all"
+bad-names = "foo,bar,baz,toto,tutu,tata"
+good-names = "x,y,i,_,main,j,k,ex,Run"
+enable = ["disallowed-name", "redefined-outer-name"]
+
+[tool.ruff.lint.isort]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "single"
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+[tool.mypy]
+show_traceback = true
+strict = true
+mypy_path = "syslog_sd_logging/"
+# Display the codes needed for # type: ignore[code] annotations.
+show_error_codes = true
+# Warn of unreachable or redundant code.
+warn_unreachable = true
