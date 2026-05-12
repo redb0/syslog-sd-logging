@@ -14,6 +14,11 @@ from syslog_sd_logging import Rfc5424SysLogAdapter, Rfc5424SysLogHandler
 if TYPE_CHECKING:
     from pytz.tzinfo import BaseTzInfo
 
+# LogRecord time base used across tests expecting 2000-01-01T18:11:11.111111+07:00 (Vostok).
+# Python 3.13+ sets record.created from time.time_ns() / 1e9, so time.time() alone is ignored.
+_FIXED_LOG_CREATED_S = 946725071.111111
+_FIXED_LOG_CREATED_NS = 946_725_071_111_111_000
+
 
 @pytest.fixture
 def timezone() -> 'BaseTzInfo':
@@ -37,7 +42,8 @@ def logger(timezone: 'BaseTzInfo') -> Generator[logging.Logger, None, None]:
     """Fixture to return the logger for the tests."""
     with (
         patch('logging.os.getpid', return_value=111),
-        patch('logging.time.time', return_value=946725071.111111),
+        patch('logging.time.time', return_value=_FIXED_LOG_CREATED_S),
+        patch('logging.time.time_ns', return_value=_FIXED_LOG_CREATED_NS),
         patch('syslog_sd_logging.formatter.get_localzone', return_value=timezone),
         patch('syslog_sd_logging.handler.socket.gethostname', return_value='test-hostname'),
         patch('logging.handlers.socket.socket.connect', side_effect=connect_mock),
