@@ -1,6 +1,6 @@
 # Python rfc5424 syslog logging handler
 
-[![Codecov](https://codecov.io/gh/redb0/syslog-sd-logging/branch/main/graph/badge.svg)](https://codecov.io/gh/redb0/syslog-sd-logging)
+[![codecov](https://codecov.io/gh/redb0/syslog-sd-logging/graph/badge.svg?token=19FZSE1P0A)](https://codecov.io/gh/redb0/syslog-sd-logging)
 
 **This is a fork of a [package](https://github.com/jobec/rfc5424-logging-handler) with a logging handler with support for the RFC 5424 standard.**
 
